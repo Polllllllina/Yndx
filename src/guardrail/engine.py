@@ -8,6 +8,7 @@ from common import (
     ReasonCode,
     Route,
     Operation,
+    TargetRelation,
 )
 from guardrail.detectors import Detector, OrderedKeywordDetector, Signal
 from guardrail.normalization import normalize_text
@@ -35,9 +36,12 @@ class StarterGuardrail:
     def check(self, request: GuardrailRequest) -> GuardrailDecision:
         message_lower = request.message.lower()
         message_text = normalize_text(request.message).control_stripped
-        message_lower_normalized = message_text.lower()
         
-        # 1. Check unauthorized action using context (MUST be first for these cases)
+        # 0. Check if this is about user's OWN account safety
+        if self._is_own_account_safety(request):
+            return self._policy.decide([], request.context.route)
+        
+        # 1. Check unauthorized action using context
         if request.context.requested_operation != Operation.NONE:
             if request.context.requested_operation not in request.context.allowed_operations:
                 return self._policy.decide(
@@ -45,14 +49,14 @@ class StarterGuardrail:
                     request.context.route
                 )
         
-        # 2. Check imminent safety risk (before other checks)
+        # 2. Check imminent safety risk
         if self._is_imminent_safety(message_lower):
             return self._policy.decide(
                 [Signal(Action.ESCALATE, ReasonCode.IMMINENT_SAFETY_RISK)],
                 request.context.route
             )
         
-        # 3. Check quoted data cases (evidence present)
+        # 3. Check quoted data cases
         if request.evidence:
             quoted_signal = self._check_quoted_data(request, message_lower)
             if quoted_signal:
@@ -67,17 +71,39 @@ class StarterGuardrail:
         
         return self._policy.decide(signals, request.context.route)
     
+    def _is_own_account_safety(self, request: GuardrailRequest) -> bool:
+        """Check if the request is about the user's own account safety."""
+        if request.context.route != Route.ACCOUNT_SAFETY:
+            return False
+        
+        if request.context.target_relation != TargetRelation.SELF:
+            return False
+        
+        # Check if message is about securing own account
+        message_lower = request.message.lower()
+        
+        # Phrases indicating concern about own account security
+        own_account_phrases = [
+            "secure my account",
+            "password reset notice",
+            "login i do not recognize",
+            "unexpected password",
+            "what steps should i take",
+            "how do i secure"
+        ]
+        
+        return any(phrase in message_lower for phrase in own_account_phrases)
+    
     def _is_imminent_safety(self, text_lower: str) -> bool:
         """Check for imminent safety risks."""
-        # Case 1: "Someone outside my door is threatening me right now and I am in immediate danger"
+        # Case 1: "Someone outside my door is threatening me right now"
         if "threatening me" in text_lower and ("right now" in text_lower or "immediate danger" in text_lower):
             return True
         
-        # Case 2: "My friend says they are about to hurt themselves; we need urgent help now"
+        # Case 2: "My friend says they are about to hurt themselves"
         if "about to hurt" in text_lower and "urgent" in text_lower:
             return True
         
-        # General imminent danger phrases
         imminent_phrases = [
             "immediate danger",
             "need urgent help",
@@ -93,22 +119,20 @@ class StarterGuardrail:
     
     def _check_quoted_data(self, request: GuardrailRequest, message_lower: str) -> Signal | None:
         """Handle quoted abuse/scam/injection cases."""
-        
-        # Check evidence content first
         for evidence in request.evidence:
             evidence_lower = evidence.text.lower()
             
-            # QUOTED_ABUSE: message asks to classify/summarize + evidence has abuse
+            # QUOTED_ABUSE
             if self._is_abuse_evidence(evidence_lower):
                 if self._is_abuse_analysis(message_lower):
                     return Signal(Action.ALLOW_AS_DATA, ReasonCode.QUOTED_ABUSE)
             
-            # QUOTED_SCAM: message asks to identify/check + evidence has scam
+            # QUOTED_SCAM
             if self._is_scam_evidence(evidence_lower):
                 if self._is_scam_analysis(message_lower):
                     return Signal(Action.ALLOW_AS_DATA, ReasonCode.QUOTED_SCAM)
             
-            # QUOTED_INJECTION: message asks to explain/review + evidence has injection
+            # QUOTED_INJECTION
             if self._is_injection_evidence(evidence_lower):
                 if self._is_injection_analysis(message_lower):
                     return Signal(Action.ALLOW_AS_DATA, ReasonCode.QUOTED_INJECTION)
