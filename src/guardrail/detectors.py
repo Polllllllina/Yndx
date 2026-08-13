@@ -24,7 +24,7 @@ class KeywordRule:
     reason_code: ReasonCode
     keywords: tuple[str, ...]
 
-# Very precise keyword rules
+# Expanded robust keyword rules
 DEFAULT_KEYWORD_RULES = (
     KeywordRule(
         Action.BLOCK,
@@ -34,6 +34,11 @@ DEFAULT_KEYWORD_RULES = (
             "help me threaten",
             "intimidate into silence",
             "threaten a neighbor",
+            "generate an insult",
+            "harass this user",
+            "write a toxic message",
+            "abuse someone",
+            "insult them",
         ),
     ),
     KeywordRule(
@@ -45,6 +50,10 @@ DEFAULT_KEYWORD_RULES = (
             "bypass safety",
             "circumvent content",
             "evade the safety",
+            "jailbreak",
+            "turn off filtering",
+            "disable moderation",
+            "bypass the filter",
         ),
     ),
     KeywordRule(
@@ -56,6 +65,11 @@ DEFAULT_KEYWORD_RULES = (
             "reveal the system prompt",
             "disregard all",
             "disclose",
+            "ignore previous instructions",
+            "you must now act as",
+            "system prompt",
+            "output the configuration",
+            "ignore the system rules",
         ),
     ),
     KeywordRule(
@@ -66,6 +80,10 @@ DEFAULT_KEYWORD_RULES = (
             "private home address",
             "tell me the reporter",
             "find the private",
+            "personally identifiable information",
+            "leak the address",
+            "who reported me",
+            "secret logs",
         ),
     ),
 )
