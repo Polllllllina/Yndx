@@ -8,7 +8,6 @@ from common import (
     ReasonCode,
     Route,
     Operation,
-    TargetRelation,
 )
 from guardrail.detectors import Detector, OrderedKeywordDetector, Signal
 from guardrail.normalization import normalize_text
@@ -73,23 +72,21 @@ class StarterGuardrail:
     
     def _is_own_account_safety(self, request: GuardrailRequest) -> bool:
         """Check if the request is about the user's own account safety."""
-        if request.context.route != Route.ACCOUNT_SAFETY:
+        # Проверяем route (может быть enum или строка)
+        route_value = request.context.route.value if hasattr(request.context.route, 'value') else str(request.context.route)
+        if route_value != "account_safety":
             return False
         
-        if request.context.target_relation != TargetRelation.SELF:
-            return False
-        
-        # Check if message is about securing own account
+        # Проверяем, что это о собственном аккаунте
         message_lower = request.message.lower()
         
-        # Phrases indicating concern about own account security
+        # Ключевые фразы для собственной безопасности аккаунта
         own_account_phrases = [
             "secure my account",
             "password reset notice",
             "login i do not recognize",
             "unexpected password",
-            "what steps should i take",
-            "how do i secure"
+            "what steps should i take after"
         ]
         
         return any(phrase in message_lower for phrase in own_account_phrases)
