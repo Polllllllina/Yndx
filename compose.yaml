@@ -1,0 +1,54 @@
+services:
+  guardrail:
+    build:
+      context: .
+      dockerfile: Dockerfile.guardrail
+    image: trust-safety-guardrail:local
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2).read()
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
+    networks:
+      - runtime
+
+  tester:
+    build:
+      context: .
+      dockerfile: Dockerfile.tester
+    image: trust-safety-tester:local
+    environment:
+      GUARDRAIL_URL: http://guardrail:8080
+    ports:
+      - "${TESTER_BIND_HOST:-127.0.0.1}:8090:8090"
+    depends_on:
+      guardrail:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8090/healthz', timeout=2).read()
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
+    networks:
+      - runtime
+      - edge
+
+networks:
+  runtime:
+    internal: true
+  edge:
+    internal: false

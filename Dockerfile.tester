@@ -1,0 +1,30 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+WORKDIR /app
+
+COPY requirements.lock ./requirements.lock
+RUN python -m pip install \
+    --disable-pip-version-check \
+    --no-cache-dir \
+    --requirement requirements.lock \
+    && groupadd --gid 10001 app \
+    && useradd \
+        --uid 10001 \
+        --gid 10001 \
+        --no-create-home \
+        --shell /usr/sbin/nologin \
+        app
+
+COPY --chown=10001:10001 src/common/ ./src/common/
+COPY --chown=10001:10001 src/tester/ ./src/tester/
+# Included only as a convenient published example. The API never loads it implicitly.
+COPY --chown=10001:10001 data/public.json ./data/public.json
+
+USER 10001:10001
+EXPOSE 8090
+
+CMD ["python", "-m", "uvicorn", "tester.app:app", "--host", "0.0.0.0", "--port", "8090"]
