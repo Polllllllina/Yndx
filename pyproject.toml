@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trust-safety-guardrail-tester"
+version = "0.1.0"
+description = "Trust & Safety guardrail service and conformance tester"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "fastapi",
+    "httpx",
+    "pydantic",
+    "uvicorn",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+filterwarnings = [
+    'ignore:^Using `httpx` with `starlette\.testclient` is deprecated; install `httpx2` instead\.$:starlette.exceptions.StarletteDeprecationWarning:fastapi.testclient',
+]
